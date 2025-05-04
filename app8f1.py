@@ -142,9 +142,14 @@ if st.button("Simular esta carrera"):
     if resultado:
         st.success("Carrera simulada correctamente")
         st.markdown("### Clasificación de esta carrera:")
+        primer_puntaje = resultado[0][0]
         for i, (puntos_prob, piloto, proba) in enumerate(resultado, start=1):
-            probs_str = ", ".join(f"{p:.2f}" for p in proba)
-            st.write(f"**P{i}**: {piloto} — Ponderación: {puntos_prob:.3f} — Probabilidades: [{probs_str}]")
+            if i == 1:
+                st.write(f"**P{i}**: {piloto} — 🏁 Ganador")
+            else:
+                diferencia = primer_puntaje - puntos_prob
+                tiempo = diferencia * 5  # 1 punto = 5 segundos
+                st.write(f"**P{i}**: {piloto} — +{tiempo:.1f}s")
     else:
         st.error("No se pudo simular la carrera.")
 
