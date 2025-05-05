@@ -113,14 +113,38 @@ constructor_names = sorted(df_constructors['NAME#'].unique())
 
 for i in range(8):
     st.markdown(f"### Piloto {i + 1}")
+    
     piloto = st.selectbox(f"Selecciona piloto {i + 1}", driverrefs, key=f"piloto_{i}")
-    year = st.number_input(f"Año del piloto {piloto}", min_value=1980, max_value=2025, value=2012, step=1, key=f"year_piloto_{i}")
+    
+    # Filtrar años en los que ese piloto haya participado
+    years_piloto = sorted(
+        df[df_drivers['DRIVERREF'] == piloto]['RACE_DATE'].dt.year.unique()
+    )
+    years_piloto = [y for y in years_piloto if y <= 2023]
+    
+    year = st.selectbox(f"Año del piloto {piloto}", years_piloto, key=f"year_piloto_{i}")
+    
     piloto_completo = f"{piloto} {year}"
     pilotos_seleccionados.append(piloto_completo)
 
-    grids_por_piloto[piloto_completo] = st.number_input(f"Grid de salida para {piloto_completo}", min_value=1, max_value=20, value=5, step=1, key=f"grid_{i}")
-    constructores_por_piloto[piloto_completo] = st.selectbox(f"Escudería para {piloto_completo}", constructor_names, key=f"constructor_{i}")
-    constructor_years_por_piloto[piloto_completo] = st.number_input(f"Año escudería para {piloto_completo}", min_value=1980, max_value=2025, value=2012, step=1, key=f"year_constructor_{i}")
+    grids_por_piloto[piloto_completo] = st.number_input(
+        f"Grid de salida para {piloto_completo}", min_value=1, max_value=20, value=5, step=1, key=f"grid_{i}"
+    )
+
+    # Filtrar escuderías que compitieron ese año
+    escuderias_filtradas = df[
+        df['RACE_DATE'].dt.year == year
+    ]['CONSTRUCTOR_ID'].map(
+        df_constructors.set_index('CONSTRUCTOR_ID')['NAME#']
+    ).dropna().unique()
+    escuderias_filtradas = sorted(set(escuderias_filtradas))
+
+    constructores_por_piloto[piloto_completo] = st.selectbox(
+        f"Escudería para {piloto_completo}", escuderias_filtradas, key=f"constructor_{i}"
+    )
+
+    constructor_years_por_piloto[piloto_completo] = year  # Usa el mismo año ya que ya lo has limitado
+
 
 # --- Selección de circuito y clima ---
 circuit_names = sorted(df['CIRCUIT_NAME'].dropna().unique())
