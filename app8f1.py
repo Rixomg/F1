@@ -129,21 +129,21 @@ for i in range(8):
 
     grids_por_piloto[piloto_completo] = st.number_input(f"Grid de salida para {piloto_completo}", min_value=1, max_value=20, value=5, step=1, key=f"grid_{i}")
 
-    # --- Selección de escudería ---
+    # Escudería con key única
     constructor_names = sorted(df_constructors['NAME#'].dropna().unique())
-    constructor_name = st.selectbox("Escudería:", constructor_names)
+    constructor_name = st.selectbox(f"Escudería para {piloto_completo}", constructor_names, key=f"constructor_name_{i}")
+    constructores_por_piloto[piloto_completo] = constructor_name
 
-    # Filtrar los años en los que la escudería participó
+    # Filtrar años válidos
     try:
         constructor_ids = df_constructors[df_constructors['NAME#'] == constructor_name]['CONSTRUCTOR_ID'].unique()
         years_constructor = sorted(df[df['CONSTRUCTOR_ID'].isin(constructor_ids)]['RACE_DATE'].dt.year.unique())
-        years_constructor = [y for y in years_constructor if y <= 2023]  # Eliminar 2024 si aparece
+        years_constructor = [y for y in years_constructor if y <= 2023]
     except:
         years_constructor = []
-        st.warning(f"No se encontraron años para la escudería '{constructor_name}'.")
-        st.stop()
 
-    constructor_year = st.selectbox("Año de la escudería:", years_constructor)
+    constructor_year = st.selectbox(f"Año escudería para {piloto_completo}", years_constructor, key=f"year_constructor_{i}")
+    constructor_years_por_piloto[piloto_completo] = constructor_year
 
 
 # --- Selección de circuito y clima ---
