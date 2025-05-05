@@ -129,19 +129,22 @@ for i in range(8):
 
     grids_por_piloto[piloto_completo] = st.number_input(f"Grid de salida para {piloto_completo}", min_value=1, max_value=20, value=5, step=1, key=f"grid_{i}")
 
-    # Restricción escuderías que compitieron con ese piloto en ese año
-    try:
-        constructor_ids = df[
-            (df['DRIVER_ID'] == driver_id) & 
-            (df['RACE_DATE'].dt.year == year)
-        ]['CONSTRUCTOR_ID'].unique()
-        constructor_options = df_constructors[df_constructors['CONSTRUCTOR_ID'].isin(constructor_ids)]['NAME#'].unique()
-        constructor_options = sorted(constructor_options)
-    except:
-        constructor_options = sorted(df_constructors['NAME#'].unique())
+    # --- Selección de escudería ---
+constructor_names = sorted(df_constructors['NAME#'].dropna().unique())
+constructor_name = st.selectbox("Escudería:", constructor_names)
 
-    constructores_por_piloto[piloto_completo] = st.selectbox(f"Escudería para {piloto_completo}", constructor_options, key=f"constructor_{i}")
-    constructor_years_por_piloto[piloto_completo] = st.number_input(f"Año escudería para {piloto_completo}", min_value=1980, max_value=2023, value=year, step=1, key=f"year_constructor_{i}")
+# Filtrar los años en los que la escudería participó
+try:
+    constructor_ids = df_constructors[df_constructors['NAME#'] == constructor_name]['CONSTRUCTOR_ID'].unique()
+    years_constructor = sorted(df[df['CONSTRUCTOR_ID'].isin(constructor_ids)]['RACE_DATE'].dt.year.unique())
+    years_constructor = [y for y in years_constructor if y <= 2023]  # Eliminar 2024 si aparece
+except:
+    years_constructor = []
+    st.warning(f"No se encontraron años para la escudería '{constructor_name}'.")
+    st.stop()
+
+constructor_year = st.selectbox("Año de la escudería:", years_constructor)
+
 
 # --- Selección de circuito y clima ---
 circuit_names = sorted(df['CIRCUIT_NAME'].dropna().unique())
