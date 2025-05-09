@@ -415,8 +415,8 @@ campeon_config = st.session_state.pilotos_config.get(campeon, {})
 escuderia = campeon_config.get("constructor", "").lower().replace(" ", "_")
 
 # Rutas
-ruta_piloto = f"C:/Users/Usuario/Desktop/Proyecto Master F1/images/{campeon}.jpg"
-ruta_logo = f"C:/Users/Usuario/Desktop/Proyecto Master F1/logos/{escuderia}.jpg"
+ruta_piloto = f"{campeon}.jpg"
+ruta_logo = f"{escuderia}.jpg"
 
 # Mostrar en columnas
 col1, col2 = st.columns(2)
