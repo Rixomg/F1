@@ -426,6 +426,8 @@ with col1:
         st.warning("No se encontró imagen del campeón.")
 
 with col2:
+    st.write("Ruta del logo:", ruta_logo)
+
     if os.path.exists(ruta_logo):
         st.image(Image.open(ruta_logo), caption=escuderia.replace('_', ' ').title(), width=400)
     else:
