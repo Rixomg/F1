@@ -412,7 +412,7 @@ import os
 
 # Configurar info
 campeon_config = st.session_state.pilotos_config.get(campeon, {})
-escuderia = campeon_config.get("constructor", "").lower().replace(" ", "_")
+escuderia = campeon_config.get("constructor")
 
 ruta_piloto = os.path.join("images", f"{campeon}.jpg")
 ruta_logo = os.path.join("logos", f"{escuderia}.jpg")
@@ -426,7 +426,7 @@ with col1:
         st.warning("No se encontró imagen del campeón.")
 
 with col2:
-    st.write("Ruta del logo:", ruta_logo)
+    
 
     if os.path.exists(ruta_logo):
         st.image(Image.open(ruta_logo), caption=escuderia.replace('_', ' ').title(), width=400)
