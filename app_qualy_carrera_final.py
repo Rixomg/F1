@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import openai
+openai.api_key = st.secrets["openai"]["api_key"]
 
 
 # --- Cargar datos y modelos ---
@@ -34,6 +36,36 @@ if 'resultados_mundial' not in st.session_state:
     st.session_state.resultados_mundial = {}
 if 'carrera_actual' not in st.session_state:
     st.session_state.carrera_actual = 0
+    
+if 'historial_carreras' not in st.session_state:
+    st.session_state.historial_carreras = []
+
+if 'clasificacion_mundial' not in st.session_state:
+    st.session_state.clasificacion_mundial = {}
+    
+    
+
+def obtener_cronica_desde_gpt(prompt):
+    return "Este es un espacio reservado para la crónica automática. Copia el siguiente prompt y pégalo en tu GPT personalizado:\n\n" + prompt
+
+
+
+
+def generar_prompt_presentacion(pilotos_config):
+    texto = "### Presentación del Campeonato de F1 Simulado\n\n"
+    texto += "Resumen de los 8 binomios seleccionados y sus expectativas:\n\n"
+
+    for piloto, config in pilotos_config.items():
+        anio_piloto = config["anio_piloto"]
+        constructor = config["constructor"]
+        anio_constructor = config["anio_constructor"]
+        
+        nombre_formateado = piloto.replace("_", " ").title()
+        texto += f"- {nombre_formateado} ({anio_piloto}) con el {constructor} del {anio_constructor}\n"
+
+    texto += "\nEscribe una presentación con tono narrativo deportivo: destaca quiénes parten como favoritos, quiénes podrían sorprender, y qué combinaciones parecen más arriesgadas o desequilibradas. Añade emoción y expectativas para la temporada."
+    return texto
+
    
 # --- Función: generar features para clasificación (Qualy) ---
 def generar_features_qualy(pilotos_config, circuito):
@@ -82,6 +114,36 @@ def generar_features_qualy(pilotos_config, circuito):
 
     return pd.DataFrame(rows)
 
+def generar_prompt_para_gpt(carrera):
+    circuito = carrera["circuito"]
+    lluvia = carrera["lluvia"]
+    resultados = carrera["resultados"]
+    clasif_antes = carrera["clasificacion_antes"]
+    clasif_despues = carrera["clasificacion_despues"]
+
+    poleman = sorted(resultados, key=lambda x: x["salida"])[0]["piloto"]
+    ganador = sorted(resultados, key=lambda x: x["llegada"])[0]["piloto"]
+
+    resumen = f"Resumen del GP de {circuito}\n\n"
+    resumen += f"Condiciones: {'Lluvia' if lluvia else 'Seco'}\n"
+    resumen += f"Pole position: {poleman}\n"
+    resumen += f"Ganador: {ganador}\n\n"
+    resumen += "Resultados:\n"
+
+    for r in resultados:
+        resumen += f"- {r['piloto']}: salía {r['salida']}º, terminó {r['llegada']}º, +{r['puntos_f1']} pts\n"
+
+    resumen += "\nClasificación antes de la carrera:\n"
+    for i, (piloto, pts) in enumerate(sorted(clasif_antes.items(), key=lambda x: x[1], reverse=True), 1):
+        resumen += f"{i}. {piloto} — {pts} pts\n"
+
+    resumen += "\nClasificación después de la carrera:\n"
+    for i, (piloto, pts) in enumerate(sorted(clasif_despues.items(), key=lambda x: x[1], reverse=True), 1):
+        resumen += f"{i}. {piloto} — {pts} pts\n"
+
+    resumen += "\nEscribe una crónica deportiva con estilo narrativo profesional, destacando lo más relevante y comentando los cambios en la clasificación."
+
+    return resumen
 
 
 
@@ -283,6 +345,11 @@ for i in range(10):
 if st.button("📅 Guardar calendario"):
     st.session_state.calendario = calendario_temporal
     st.success("Calendario guardado correctamente")
+    
+if st.button("🎙️ Generar presentación de pilotos y equipos"):
+    prompt_presentacion = generar_prompt_presentacion(st.session_state.pilotos_config)
+    st.text_area("Prompt para GPT (Presentación previa al mundial)", prompt_presentacion, height=400)
+
    
 simulacion_neutra = st.checkbox("Simular mundial sin ajustes", value=False)
 
@@ -363,17 +430,77 @@ if st.button("Simular siguiente carrera"):
             ganador = resultados[0][1]
             st.session_state.victorias[ganador] = st.session_state.victorias.get(ganador, 0) + 1
 
+        # === Guardar resultados carrera + estado del mundial ===
+            resultados_dict = []
+            for i, (score, piloto) in enumerate(resultados, start=1):
+                salida = grid.index(piloto) + 1
+                llegada = i
+                puntos_f1_asignados = puntos_f1[i-1] if i <= 8 else 0
+                resultados_dict.append({
+                    "piloto": piloto,
+                    "salida": salida,
+                    "llegada": llegada,
+                    "puntos_f1": puntos_f1_asignados,
+                    "score_modelo": score
+                })
+
+# Clasificación antes de carrera
+            clasificacion_antes = dict(st.session_state.resultados_mundial)
+
+# Actualizar clasificación (ya actualizada arriba, usamos dict de referencia)
+            clasificacion_despues = dict(st.session_state.resultados_mundial)
+
+# Guardar datos de carrera en historial
+            if 'historial_carreras' not in st.session_state:
+                st.session_state.historial_carreras = []
+
+            if 'clasificacion_mundial' not in st.session_state:
+                st.session_state.clasificacion_mundial = {}
+
+# Actualizar clasificación "oficial" paralela
+            for r in resultados_dict:
+                piloto = r['piloto']
+                st.session_state.clasificacion_mundial[piloto] = st.session_state.clasificacion_mundial.get(piloto, 0) + r['puntos_f1']
+
+            st.session_state.historial_carreras.append({
+                "circuito": circuito,
+                "lluvia": bool(lluvia),
+                "resultados": resultados_dict,
+                "clasificacion_antes": clasificacion_antes,
+                "clasificacion_despues": clasificacion_despues
+            })
+            
+
+
 
 
         st.session_state.carrera_actual += 1
+        
     else:
         st.success("🏁 Mundial finalizado")
 
+#if st.button("📜 Generar crónica (copiar prompt para GPT)"):
+                #ultima = st.session_state.historial_carreras[-1]
 
+                #prompt = generar_prompt_para_gpt(ultima)
+                #st.text_area("Prompt para GPT:", prompt, height=400)
 #st.header("📊 Clasificación General")
 #clasificacion = sorted(st.session_state.resultados_mundial.items(), key=lambda x: x[1], reverse=True)
 #for i, (piloto, puntos) in enumerate(clasificacion, start=1):
     #st.write(f"{i}. {piloto} — {puntos} puntos")
+
+if st.session_state.historial_carreras:
+    ultima = st.session_state.historial_carreras[-1]
+    prompt = generar_prompt_para_gpt(ultima)
+    st.text_area("📝 Prompt generado", prompt, height=400)
+
+    url_gpt = "https://chatgpt.com/g/g-6824ad0751a481918919c57574db29b3-narrador-f1"  # 🔁 usa tu link real
+
+    st.markdown(f"""
+        👉 [Abrir mi GPT personalizado y pegar el prompt]({url_gpt})
+        
+        ⚠️ Asegúrate de haber copiado el prompt de arriba antes de ir.
+    """)
 
 
 st.header("📄 Resumen del Mundial (Pilotos y Escuderías)")
