@@ -289,7 +289,9 @@ if st.button("🔄 Resetear Mundial"):
     st.session_state.carrera_actual = 0
     st.session_state.poles = {}
     st.session_state.victorias = {}
-    st.success("Estado reiniciado")
+    st.session_state.historial_carreras = []  # 🔁 limpia prompts anteriores
+    st.session_state.clasificacion_mundial = {}
+    st.success("Estado reiniciado correctamente")
 
 
 
@@ -505,58 +507,69 @@ st.header("📄 Resumen del Mundial (Pilotos y Escuderías)")
 
 
 resumen_mundial = []
-for piloto, puntos in st.session_state.resultados_mundial.items():
-    config = st.session_state.pilotos_config.get(piloto, {})
+for piloto, config in st.session_state.pilotos_config.items():
+    if not config.get("constructor") or not config.get("anio_constructor") or not config.get("anio_piloto"):
+        continue  # ⛔️ saltar entradas incompletas o inválidas
+
     resumen_mundial.append({
         "Piloto": piloto,
         "Año Piloto": config.get("anio_piloto", "❓"),
         "Escudería": config.get("constructor", "❓"),
         "Año Escudería": config.get("anio_constructor", "❓"),
-        "Puntos": puntos,
+        "Puntos": st.session_state.resultados_mundial.get(piloto, 0),
         "Poles": st.session_state.poles.get(piloto, 0),
         "Victorias": st.session_state.victorias.get(piloto, 0)
     })
-st.dataframe(pd.DataFrame(resumen_mundial).sort_values("Puntos", ascending=False))
+
+if resumen_mundial:
+    st.dataframe(pd.DataFrame(resumen_mundial).sort_values("Puntos", ascending=False))
+else:
+    st.info("ℹ️ Aún no hay pilotos con datos válidos para mostrar.")
+
+
+
 
 
 if st.session_state.carrera_actual >= len(st.session_state.calendario):
     st.success("🏁 Mundial finalizado")
 
-    # Ordenar clasificación final
     clasificacion_final = sorted(
         st.session_state.resultados_mundial.items(),
         key=lambda x: x[1],
         reverse=True
     )
-    campeon = clasificacion_final[0][0]  # nombre del campeón (driverref)
 
-    
+    if clasificacion_final:  # Solo si hay pilotos clasificados
+        campeon = clasificacion_final[0][0]
+        campeon_config = st.session_state.pilotos_config.get(campeon, {})
+        escuderia = campeon_config.get("constructor", "unknown")
 
-from PIL import Image
-import os
+        st.markdown(f"🎉 **¡El campeón del mundial es {campeon.replace('_', ' ').title()} con {escuderia.title()}!** 🏆")
 
-# Configurar info
-campeon_config = st.session_state.pilotos_config.get(campeon, {})
-escuderia = campeon_config.get("constructor")
+        import os
+        from PIL import Image
 
-ruta_piloto = os.path.join("images", f"{campeon}.jpg")
-ruta_logo = os.path.join("logos", f"{escuderia}.jpg")
-# Mostrar en columnas
-col1, col2 = st.columns(2)
+        ruta_piloto = os.path.join("images", f"{campeon}.jpg")
+        ruta_logo = os.path.join("logos", f"{escuderia}.jpg")
 
-with col1:
-    if os.path.exists(ruta_piloto):
-        st.image(Image.open(ruta_piloto), caption=campeon.replace('_', ' ').title(), width=300)
-    else:
-        st.warning("No se encontró imagen del campeón.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if os.path.exists(ruta_piloto):
+                st.image(Image.open(ruta_piloto), caption=campeon.replace('_', ' ').title(), width=300)
+            else:
+                st.info("📷 Imagen del campeón no disponible.")
 
-with col2:
-    
+        with col2:
+            if os.path.exists(ruta_logo):
+                st.image(Image.open(ruta_logo), caption=escuderia.title(), width=400)
+            else:
+                st.info("🏎️ Logo de la escudería no disponible.")
 
-    if os.path.exists(ruta_logo):
-        st.image(Image.open(ruta_logo), caption=escuderia.replace('_', ' ').title(), width=400)
-    else:
-        st.warning("No se encontró logo de la escudería.")
+
+
+
+
+
 
 
 
