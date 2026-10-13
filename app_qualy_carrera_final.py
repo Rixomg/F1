@@ -1079,7 +1079,12 @@ def cargar_8_pilotos_equilibrados():
     candidatos = (
         candidatos
         .groupby('piloto', group_keys=False)
-        .apply(lambda g: g.sample(n=min(3, len(g)), random_state=int(rng.integers(0, 1_000_000))))
+        .apply(
+            lambda g: g.sample(
+                n=min(3, len(g)),
+                random_state=int(rng.integers(0, 1_000_000))
+            )
+        )
         .reset_index(drop=True)
     )
 
